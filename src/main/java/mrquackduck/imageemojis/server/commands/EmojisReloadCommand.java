@@ -16,6 +16,9 @@ import java.util.List;
 import java.util.logging.Level;
 
 public class EmojisReloadCommand implements CommandExecutor {
+    private static final String RELOADED_MESSAGE = "reloaded";
+    private static final String RELOAD_ERROR_MESSAGE = "an-error-occurred";
+
     private final ImageEmojisPlugin plugin;
     private final Configuration config;
 
@@ -26,40 +29,42 @@ public class EmojisReloadCommand implements CommandExecutor {
 
     @Override
     public boolean onCommand(@NotNull CommandSender commandSender, @NotNull Command command, @NotNull String s, String[] strings) {
-        try {
-            // Removing old suggestions
-            SuggestionMode suggestionMode = config.suggestionMode();
-            List<EmojiModel> emojis = plugin.getEmojiRepository().getEmojis();
-
-            for (Player player : plugin.getServer().getOnlinePlayers())
-                SuggestionManager.removeSuggestions(player, emojis, suggestionMode);
-        }
-        catch (Exception e) { /* Ignored */ }
-
-        // Signaling the plugin to reload
-        try { plugin.reload(); }
-        catch (Exception e) { return handleException(commandSender, e); }
-
-        try {
-            // Updating suggestions after reload
-            SuggestionMode suggestionMode = config.suggestionMode();
-            List<EmojiModel> emojis = plugin.getEmojiRepository().getEmojis();
-            for (Player player : plugin.getServer().getOnlinePlayers()) {
-                if (player.hasPermission(Permissions.USE)) {
-                    SuggestionManager.addSuggestions(player, emojis, suggestionMode);
-                }
-            }
-
-            commandSender.sendMessage(config.getMessage("reloaded"));
-
-            return true;
-        }
-        catch (Exception e) { return handleException(commandSender, e); }
+        plugin.getServer().getGlobalRegionScheduler().execute(plugin, () -> reload(commandSender));
+        return true;
     }
 
-    private boolean handleException(@NotNull CommandSender commandSender, Exception e) {
-        commandSender.sendMessage(config.getMessage("an-error-occurred"));
-        plugin.getLogger().log(Level.SEVERE, e.getMessage());
-        return true;
+    private void reload(CommandSender sender) {
+        try {
+            SuggestionMode oldMode = config.suggestionMode();
+            List<EmojiModel> oldEmojis = plugin.getEmojiRepository().getEmojis();
+            plugin.reload();
+            updateSuggestions(oldEmojis, oldMode);
+            sendReply(sender, config.getMessage(RELOADED_MESSAGE));
+        } catch (Exception exception) {
+            sendReply(sender, config.getMessage(RELOAD_ERROR_MESSAGE));
+            plugin.getLogger().log(Level.SEVERE, exception.getMessage(), exception);
+        }
+    }
+
+    private void updateSuggestions(List<EmojiModel> oldEmojis, SuggestionMode oldMode) {
+        SuggestionMode newMode = config.suggestionMode();
+        List<EmojiModel> newEmojis = plugin.getEmojiRepository().getEmojis();
+        for (Player player : plugin.getServer().getOnlinePlayers()) {
+            player.getScheduler().execute(plugin, () -> {
+                SuggestionManager.removeSuggestions(player, oldEmojis, oldMode);
+                if (player.hasPermission(Permissions.USE)) {
+                    SuggestionManager.addSuggestions(player, newEmojis, newMode);
+                }
+            }, null, 1L);
+        }
+    }
+
+    private void sendReply(CommandSender sender, String message) {
+        if (sender instanceof Player) {
+            Player player = (Player) sender;
+            player.getScheduler().execute(plugin, () -> player.sendMessage(message), null, 1L);
+            return;
+        }
+        sender.sendMessage(message);
     }
 }

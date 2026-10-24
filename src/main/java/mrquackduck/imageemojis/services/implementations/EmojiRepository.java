@@ -17,25 +17,27 @@ public class EmojiRepository implements IEmojiRepository {
     private final ImageEmojisPlugin plugin;
     private final Configuration config;
     private final Logger logger;
-    private List<EmojiModel> cachedEmojis;
+    private final List<EmojiModel> cachedEmojis;
 
     public EmojiRepository(ImageEmojisPlugin plugin) {
         this.plugin = plugin;
         this.config = new Configuration(plugin);
         this.logger = plugin.getLogger();
-        this.cachedEmojis = null;
+        this.cachedEmojis = loadEmojis();
     }
 
     @Override
     public List<EmojiModel> getEmojis() {
-        if (cachedEmojis != null) return cachedEmojis;
+        return cachedEmojis;
+    }
 
+    private List<EmojiModel> loadEmojis() {
         File emojisFolder = new File(plugin.getDataFolder(), "emojis");
 
         File[] files = emojisFolder.listFiles();
 
         List<EmojiModel> emojis = new ArrayList<>();
-        if (files == null) return emojis;
+        if (files == null) return List.of();
 
         long rangeStart;
         long rangeEnd;
@@ -83,8 +85,7 @@ public class EmojiRepository implements IEmojiRepository {
         // Sort emojis by name
         emojis.sort(Comparator.comparing(EmojiModel::getName));
 
-        cachedEmojis = emojis;
-        return emojis;
+        return List.copyOf(emojis);
     }
 
     private boolean isPng(File file) {

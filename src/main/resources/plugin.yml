@@ -2,6 +2,7 @@ name: ImageEmojis
 version: '${project.version}'
 main: mrquackduck.imageemojis.ImageEmojisPlugin
 api-version: '1.19'
+folia-supported: true
 author: 'MrQuackDuck'
 
 commands:

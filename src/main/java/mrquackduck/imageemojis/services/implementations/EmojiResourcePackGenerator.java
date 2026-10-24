@@ -22,6 +22,9 @@ import java.util.List;
 import java.util.Map;
 
 public class EmojiResourcePackGenerator implements IResourcePackGenerator {
+    private static final int MINOR_PACK_VERSION_FORMAT = 65;
+    private static final String MIN_FORMAT_KEY = "min_format";
+    private static final String MAX_FORMAT_KEY = "max_format";
     private final ImageEmojisPlugin plugin;
     private final Configuration config;
     private final List<EmojiModel> emojis;
@@ -103,7 +106,12 @@ public class EmojiResourcePackGenerator implements IResourcePackGenerator {
         // Create a map for the inner "pack" object
         Map<String, Object> pack = new HashMap<>();
         pack.put("description", description);
-        pack.put("pack_format", PackFormatUtil.getPackFormat(plugin.getServer().getBukkitVersion()));
+        int packFormat = PackFormatUtil.getPackFormat(plugin.getServer().getBukkitVersion());
+        pack.put("pack_format", packFormat);
+        if (packFormat >= MINOR_PACK_VERSION_FORMAT) {
+            pack.put(MIN_FORMAT_KEY, packFormat);
+            pack.put(MAX_FORMAT_KEY, packFormat);
+        }
 
         // Create a map for the outer wrapper
         Map<String, Object> wrapper = new HashMap<>();

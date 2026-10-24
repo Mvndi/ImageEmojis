@@ -9,6 +9,7 @@ import mrquackduck.imageemojis.setup.PluginInitializer;
 import mrquackduck.imageemojis.setup.ServerComponentRegistrar;
 import mrquackduck.imageemojis.types.models.ResourcePack;
 import mrquackduck.imageemojis.utils.MessageColorizer;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.logging.Level;
@@ -19,10 +20,11 @@ import static mrquackduck.imageemojis.utils.EnvironmentUtil.isSpigot;
 import static mrquackduck.imageemojis.utils.VersionComparer.isVersionHigherOrEqualThan;
 
 public final class ImageEmojisPlugin extends JavaPlugin {
-    private String resourcePackDownloadUrl = "";
-    private IEmojiRepository emojiRepository;
+    private volatile String resourcePackDownloadUrl = "";
+    private volatile IEmojiRepository emojiRepository;
     private IHttpResourcePackServer resourcePackServer;
-    private ResourcePack resourcePack;
+    private volatile ResourcePack resourcePack;
+    private volatile FileConfiguration configuration;
     private Logger logger;
     private final Configuration config = new Configuration(this);
 
@@ -71,6 +73,20 @@ public final class ImageEmojisPlugin extends JavaPlugin {
         new HttpServerManager(this).startIfNeeded(resourcePack.getPath());
 
         logger.info("Plugin restarted!");
+    }
+
+    @Override
+    public void reloadConfig() {
+        super.reloadConfig();
+        configuration = super.getConfig();
+    }
+
+    @Override
+    public FileConfiguration getConfig() {
+        if (configuration == null) {
+            reloadConfig();
+        }
+        return configuration;
     }
 
     private void warnIncompatibleServer() {
